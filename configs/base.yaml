@@ -1,6 +1,6 @@
 exp_name: F001_mel_f0_with_MINE_0.5_mi_loss
 MINE_net: True
-n_gpu: 1
+gpu_id: 1
 weight_pm_mi: 0.5
 data_dir: "/disk2/lz/workspace/data_new/F001"
 

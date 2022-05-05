@@ -12,7 +12,6 @@ from torch.utils.data import DataLoader
 
 from utils import get_logger
 from utils import try_gup
-from utils import prepare_device
 from data_loader import CPCDataset_sameSeq
 from data_loader import ContinuumDateset
 from scheduler import WarmupScheduler
@@ -56,18 +55,12 @@ def main(config):
     models = [pm_mi_net, encoder_f0, encoder, decoder]
 
     # prepare for (multi-device) GPU training
-    device, device_ids = prepare_device(config['n_gpu'])
-    if len(device_ids) > 1:
-        encoder_f0 = torch.nn.DataParallel(encoder_f0.cuda(), device_ids=device_ids)
-        encoder = torch.nn.DataParallel(encoder.cuda(), device_ids=device_ids)
-        decoder = torch.nn.DataParallel(decoder.cuda(), device_ids=device_ids)
-        pm_mi_net = torch.nn.DataParallel(pm_mi_net.cuda(), device_ids=device_ids)
-    else:
-        encoder_f0 = encoder_f0.to(device)
-        encoder = encoder.to(device)
-        decoder = decoder.to(device)
-        pm_mi_net = pm_mi_net.to(device)
-    logger.info(f"Prepare device on {device}, device_ids: {device_ids}")
+    device = try_gup(config['gpu_id'])
+    encoder_f0 = encoder_f0.to(device)
+    encoder = encoder.to(device)
+    decoder = decoder.to(device)
+    pm_mi_net = pm_mi_net.to(device)
+    logger.info(f"Prepare device on {device}")
     logger.info(f"training config: {config}")
 
     # Build optimizer, learning_rate scheduler
