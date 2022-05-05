@@ -1,0 +1,29 @@
+exp_name: F001_mel_f0_with_MINE_0.5_mi_loss
+MINE_net: True
+n_gpu: 1
+weight_pm_mi: 0.5
+data_dir: "/disk2/lz/workspace/data_new/F001"
+
+scheduler:
+    initial_lr: 1.0e-6
+    warmup_epochs: 10
+    max_lr: 1.0e-3
+    milestones:
+      - 100
+      - 200
+      - 300
+    gamma: 0.5
+
+model:
+  emb_lf0: False
+  lf0_size: 1
+  z_dim: 64
+  hidden_size: 512
+
+train:
+  initial_lr: 1.0e-4
+  mi_lr: 3.0e-4
+  batch_size: 256
+  epochs: 500
+  save_period: 50
+

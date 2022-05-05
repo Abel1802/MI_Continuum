@@ -1,0 +1,5 @@
+[2022-05-05 07:13:41,202][train.py][line:70][INFO] Prepare device on cuda:0, device_ids: [0]
+[2022-05-05 07:13:41,203][train.py][line:71][INFO] training config: {'exp_name': 'F001_mel_f0_with_MINE_0.5_mi_loss', 'MINE_net': True, 'n_gpu': 1, 'weight_pm_mi': 0.5, 'data_dir': '/disk2/lz/workspace/data_new/F001', 'scheduler': {'initial_lr': 1e-06, 'warmup_epochs': 10, 'max_lr': 0.001, 'milestones': [100, 200, 300], 'gamma': 0.5}, 'model': {'emb_lf0': False, 'lf0_size': 1, 'z_dim': 64, 'hidden_size': 512}, 'train': {'initial_lr': 0.0001, 'mi_lr': 0.0003, 'batch_size': 256, 'epochs': 500, 'save_period': 50}}
+[2022-05-05 07:13:41,203][trainer.py][line:49][INFO] Strat training!
+[2022-05-05 07:13:46,633][trainer.py][line:142][INFO] Train Epoch: 1 global_step: 7 rec_loss: 4.995186 lld_pm_loss: -0.039012 pm_mi_loss: 0.021063
+[2022-05-05 07:13:52,029][trainer.py][line:142][INFO] Train Epoch: 2 global_step: 13 rec_loss: 4.860562 lld_pm_loss: -0.149623 pm_mi_loss: 0.069061
