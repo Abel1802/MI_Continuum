@@ -63,7 +63,7 @@ class Encoder_f0(nn.Module):
     '''
         Map f0(B, T) to f0_emb(B, 64, T)
     '''
-    def __init__(self, emb_lf0=True):
+    def __init__(self, emb_lf0=False):
         super(Encoder_f0, self).__init__()
         self.emb_lf0 = emb_lf0
         self.conv_layers = nn.Sequential(nn.Conv1d(1, 256, kernel_size=5, stride=1, padding=2),
