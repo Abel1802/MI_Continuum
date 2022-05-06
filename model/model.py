@@ -28,13 +28,13 @@ def pad_layer(inp, layer, is_2d=False):
 
 
 def RNN(inp, layer):
-    inp_permuted = inp.permute(2, 0, 1)
+    inp_permuted = inp.permute(0, 2, 1)
     state_mul = (int(layer.bidirectional) + 1) * layer.num_layers
-    zero_state = Variable(torch.zeros(state_mul, inp.size(0), layer.hidden_size))
-    zero_state = zero_state.cuda() if torch.cuda.is_available() else zero_state
-    out_permuted, _ = layer(inp_permuted, zero_state)
-    out_rnn = out_permuted.permute(1, 2, 0)
+    # zero_state = Variable(torch.zeros(state_mul, inp.size(0), layer.hidden_size)).to(inp.device)
+    out_permuted, _ = layer(inp_permuted)
+    out_rnn = out_permuted.permute(0, 2, 1)
     return out_rnn
+
 
 def linear(inp, layer):
     batch_size = inp.size(0)
@@ -88,33 +88,112 @@ class Encoder_f0(nn.Module):
 
 
 
-class Encoder(nn.Module):
-    '''
-        Map mel(B, 80, T) to latent_z(B, 512, T)
-    '''
-    def __init__(self):
-        super(Encoder, self).__init__()
-        self.conv = nn.Conv1d(80, 512, kernel_size=5, stride=1, padding=2)
-        self.lin_layers = nn.Sequential(
-            nn.LayerNorm(512),
-            nn.ReLU(True),
-            nn.Linear(512, 512, bias=False),
-            nn.LayerNorm(512),
-            nn.ReLU(True),
-            nn.Linear(512, 512, bias=False),
-            nn.LayerNorm(512),
-            nn.ReLU(True),
-            nn.Linear(512, 512, bias=False),
-            nn.LayerNorm(512),
-            nn.ReLU(True),
-            nn.Linear(512, 64)
-        )
-        # self.lstm = nn.LSTM(64, 32, batch_first=True, bidirectional=True)
+# class Encoder(nn.Module):
+#     '''
+#         Map mel(B, 80, T) to latent_z(B, 512, T)
+#     '''
+#     def __init__(self):
+#         super(Encoder, self).__init__()
+#         self.conv = nn.Conv1d(80, 512, kernel_size=5, stride=1, padding=2)
+#         self.lin_layers = nn.Sequential(
+#             nn.LayerNorm(512),
+#             nn.ReLU(True),
+#             nn.Linear(512, 512, bias=False),
+#             nn.LayerNorm(512),
+#             nn.ReLU(True),
+#             nn.Linear(512, 512, bias=False),
+#             nn.LayerNorm(512),
+#             nn.ReLU(True),
+#             nn.Linear(512, 512, bias=False),
+#             nn.LayerNorm(512),
+#             nn.ReLU(True),
+#             nn.Linear(512, 64)
+#         )
+#         # self.lstm = nn.LSTM(64, 32, batch_first=True, bidirectional=True)
                                          
-    def forward(self, mels):
-        z = self.conv(mels) # (B, 512, T)
-        z = self.lin_layers(z.permute(0, 2, 1)) # (B, T, 64)
-        return z
+#     def forward(self, mels):
+#         z = self.conv(mels) # (B, 512, T)
+#         z = self.lin_layers(z.permute(0, 2, 1)) # (B, T, 64)
+#         return z
+
+
+class Encoder(nn.Module):
+    def __init__(self, c_in=80, c_h1=128, c_h2=64, c_h3=128, ns=0.2, dp=0.5):
+        super(Encoder, self).__init__()
+        self.ns = ns
+        self.conv1s = nn.ModuleList(
+                [nn.Conv1d(c_in, c_h1, kernel_size=k) for k in range(1, 8)]
+            )
+        self.conv2 = nn.Conv1d(len(self.conv1s)*c_h1 + c_in, c_h2, kernel_size=1)
+        self.conv3 = nn.Conv1d(c_h2, c_h2, kernel_size=5)
+        self.conv4 = nn.Conv1d(c_h2, c_h2, kernel_size=5, stride=1)
+        self.conv5 = nn.Conv1d(c_h2, c_h2, kernel_size=5)
+        self.conv6 = nn.Conv1d(c_h2, c_h2, kernel_size=5, stride=1)
+        self.conv7 = nn.Conv1d(c_h2, c_h2, kernel_size=5)
+        self.conv8 = nn.Conv1d(c_h2, c_h2, kernel_size=5, stride=1)
+        self.dense1 = nn.Linear(c_h2, c_h2)
+        self.dense2 = nn.Linear(c_h2, c_h2)
+        self.dense3 = nn.Linear(c_h2, c_h2)
+        self.dense4 = nn.Linear(c_h2, c_h2)
+        self.RNN = nn.LSTM(input_size=c_h2, hidden_size=c_h3, num_layers=1, bidirectional=True)
+        self.linear = nn.Linear(c_h2 + 2*c_h3, c_h2)
+        # normalization layer
+        self.ins_norm1 = nn.InstanceNorm1d(c_h2)
+        self.ins_norm2 = nn.InstanceNorm1d(c_h2)
+        self.ins_norm3 = nn.InstanceNorm1d(c_h2)
+        self.ins_norm4 = nn.InstanceNorm1d(c_h2)
+        self.ins_norm5 = nn.InstanceNorm1d(c_h2)
+        self.ins_norm6 = nn.InstanceNorm1d(c_h2)
+        # dropout layer
+        self.drop1 = nn.Dropout(p=dp)
+        self.drop2 = nn.Dropout(p=dp)
+        self.drop3 = nn.Dropout(p=dp)
+        self.drop4 = nn.Dropout(p=dp)
+        self.drop5 = nn.Dropout(p=dp)
+        self.drop6 = nn.Dropout(p=dp)
+
+    def conv_block(self, x, conv_layers, norm_layers, res=True):
+        out = x
+        for layer in conv_layers:
+            out = pad_layer(out, layer)
+            out = F.leaky_relu(out, negative_slope=self.ns)
+        for layer in norm_layers:
+            out = layer(out)
+        if res:
+            out = x + out
+        return out
+
+    def dense_block(self, x, layers, norm_layers, res=True):
+        out = x
+        for layer in layers:
+            out = linear(out, layer)
+            out = F.leaky_relu(out, negative_slope=self.ns)
+        for layer in norm_layers:
+            out = layer(out)
+        if res:
+            out = out + x
+        return out
+
+    def forward(self, x):
+        outs = []
+        for l in self.conv1s:
+            out = pad_layer(x, l)
+            outs.append(out)
+        out = torch.cat(outs + [x], dim=1)
+        out = F.leaky_relu(out, negative_slope=self.ns)
+        out = self.conv_block(out, [self.conv2], [self.ins_norm1, self.drop1], res=False)
+        out = self.conv_block(out, [self.conv3, self.conv4], [self.ins_norm2, self.drop2], res=True)
+        out = self.conv_block(out, [self.conv5, self.conv6], [self.ins_norm3, self.drop3], res=True)
+        out = self.conv_block(out, [self.conv7, self.conv8], [self.ins_norm4, self.drop4], res=True)
+        # dense layer
+        out = self.dense_block(out, [self.dense1, self.dense2], [self.ins_norm5, self.drop5], res=True)
+        out = self.dense_block(out, [self.dense3, self.dense4], [self.ins_norm6, self.drop6], res=True)
+        out_rnn = RNN(out, self.RNN)
+        out = torch.cat([out, out_rnn], dim=1)
+        out = self.linear(out.permute(0, 2, 1))
+        out = F.leaky_relu(out, negative_slope=self.ns)
+        #print(f"after encoder {out.shape}")
+        return out
         
 
 class LinearNorm(torch.nn.Module):

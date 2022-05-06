@@ -5,7 +5,7 @@ weight_pm_mi: 0.5
 data_dir: "/disk2/lz/workspace/data_new/F001"
 
 scheduler:
-    initial_lr: 1.0e-6
+    initial_lr: 1.0e-4
     warmup_epochs: 10
     max_lr: 1.0e-3
     milestones:

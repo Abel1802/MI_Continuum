@@ -38,7 +38,7 @@ def main(config):
 
     # Setup data_loader
     data_set = ContinuumDateset(spec_dir=f"{config['data_dir']}/mels",
-                                f0_dir=f"{config['data_dir']}/f0")
+                                f0_dir=f"{config['data_dir']}/lf0")
     data_loader = DataLoader(data_set, config['train']['batch_size'], shuffle=True)
     # Build model architecture
     encoder_f0 = Encoder_f0(config['model']['emb_lf0'])
