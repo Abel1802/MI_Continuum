@@ -12,14 +12,14 @@ class Trainer():
         Trainer class
     '''
     def __init__(self, models, optimizers, config, logger,
-                 data_loader, device, lr_schedule=None, len_epoch=None):
+                 data_loader, device, scheduler, len_epoch=None):
         super(Trainer, self).__init__()
         self.mi_pm_net, self.encoder_f0, self.encoder, self.decoder = models
         self.optimizer_pm_mi, self.optimizer = optimizers
         self.config = config
         self.logger = logger
         self.data_loader = data_loader
-        # self.scheduler = scheduler
+        self.scheduler = scheduler
         self.device = device
         self.weight_pm_mi = config['weight_pm_mi']
         self.start_epoch = 1
@@ -136,8 +136,8 @@ class Trainer():
                   f"used_time: {ctime-stime:.3f}s")
             self.global_step += 1
             stime = time.time()
-        # self.scheduler.step()
-        # lr = self.scheduler.get_last_lr()
-        # self.logger.info(f"lr: {lr}")
+        self.scheduler.step()
+        lr = self.scheduler.get_last_lr()
+        self.logger.info(f"lr: {lr}")
         self.logger.info(f"Train Epoch: {epoch} global_step: {self.global_step} rec_loss: {average_rec_loss:.6f} "
                              f"lld_pm_loss: {average_lld_pm_loss:.6f} pm_mi_loss: {average_pm_mi_loss:.6f}")
