@@ -1,7 +1,7 @@
-exp_name: F001_mel_F1_F2_with_MINE_50_mi_loss
+exp_name: F001_mel_F1_F2_with_MINE_100_mi_loss
 MINE_net: True
 gpu_id: 0
-weight_m1_mi: 50
+weight_m1_mi: 100
 data_dir: "/disk2/lz/workspace/data_new/F001"
 
 scheduler:

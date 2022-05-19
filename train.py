@@ -38,10 +38,10 @@ def main(config):
 
     # Setup data_loader
     data_set = ContinuumDateset(spec_dir=f"{config['data_dir']}/mels",
-                                f0_dir=f"{config['data_dir']}/lf0")
+                                f0_dir=f"{config['data_dir']}/F2")
     data_loader = DataLoader(data_set, config['train']['batch_size'], shuffle=True)
     # Build model architecture
-    encoder_f0 = Encoder_f0(config['model']['emb_lf0'])
+    encoder_f0 = Encoder_f0(emb_lf0=config['model']['emb_lf0'])
     encoder = Encoder()
     decoder = Decoder()
     if config['MINE_net']:
@@ -83,7 +83,8 @@ def main(config):
                       config=config,
                       logger=logger,
                       data_loader=data_loader,
-                      device=device)
+                      device=device,
+                      scheduler=scheduler)
     
     trainer.train()
 

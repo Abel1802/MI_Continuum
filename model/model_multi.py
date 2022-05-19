@@ -67,21 +67,21 @@ class Encoder_f0(nn.Module):
         super(Encoder_f0, self).__init__()
         self.emb_lf0 = emb_lf0
         self.conv_layers = nn.Sequential(nn.Conv1d(1, 256, kernel_size=5, stride=1, padding=2),
-                                        nn.GroupNorm(256//16, 256),
+                                        nn.BatchNorm1d(256),
                                         nn.ReLU(),
                                         nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
-                                        nn.GroupNorm(256//16, 256),
+                                        nn.BatchNorm1d(256),
                                         nn.ReLU(),
-                                        nn.Conv1d(256, 256, kernel_size=1, stride=1, padding=0),
-                                        nn.GroupNorm(256//16, 256),
+                                        nn.Conv1d(256, 1, kernel_size=1, stride=1, padding=0),
+                                        nn.BatchNorm1d(1),
                                         nn.ReLU())
-        self.lstm = nn.LSTM(256, 64, 1, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(256, 1, 1, batch_first=True, bidirectional=False)
     def forward(self, lf0):
         lf0 = lf0.unsqueeze(1) # (B, 1, T)
         if self.emb_lf0:
             lf0 = self.conv_layers(lf0) # (B, 256, T)
             lf0 = lf0.permute(0, 2, 1) # (B, T, 256)
-            lf0, _ = self.lstm(lf0) # (B, T, 64)
+            # lf0, _ = self.lstm(lf0) # (B, T, 64)
         else:
             lf0 = lf0.permute(0, 2, 1) #(B, T, 1)
         return lf0
