@@ -1,8 +1,8 @@
-exp_name: F002_mel_F2_with_MINE_100_mi_loss_BS256
+exp_name: F001_mel_F2_with_MINE_100_mi_loss_embTrue_128
 MINE_net: True
 gpu_id: 0
 weight_pm_mi: 100
-data_dir: "/disk2/lz/workspace/data_F002/F002"
+data_dir: "/disk2/lz/workspace/data_new/F001"
 
 scheduler:
     initial_lr: 1.0e-6
@@ -15,9 +15,9 @@ scheduler:
     gamma: 0.5
 
 model:
-  emb_lf0: False
-  lf0_size: 1
-  z_dim: 64
+  emb_lf0: True
+  lf0_size: 128
+  z_dim: 512
   hidden_size: 512
 
 train:
@@ -25,5 +25,5 @@ train:
   mi_lr: 3.0e-4
   batch_size: 256
   epochs: 500
-  save_period: 50
+  save_period: 100
 

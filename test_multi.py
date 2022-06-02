@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import argparse
+import yaml
 import subprocess
 import soundfile as sf
 import resampy
@@ -56,10 +58,10 @@ def extract_logmel(wav_path, mean, std, sr=16000):
     return mel, lf0
 
 
-def main():
+def main(config):
     # checkpoint_path
-    resume_epoch = 500
-    exp_name = "F001_mel_F1_F2_with_MINE_100_mi_loss"
+    resume_epoch = 200
+    exp_name = "F001_mel_F1_F2_with_MINE_100_mi_loss_BS256"
     checkpoint_path = f"exp/{exp_name}/checkpoints/model.ckpt-{resume_epoch}.pt"
     mel_stats = np.load("/disk2/lz/workspace/data_new/F001/mel_stats.npy")
     mel_mean, mel_std = mel_stats[0], mel_stats[1]
@@ -97,10 +99,11 @@ def main():
     ref_lF2 = torch.FloatTensor(ref_lF2).unsqueeze(0).to(device)
 
     # load trained model
-    encoder_F1 = Encoder_f0().to(device)
-    encoder_F2 = Encoder_f0().to(device)
-    encoder = Encoder().to(device)
-    decoder = DecoderMulti().to(device)
+    encoder_F1 = Encoder_f0(emb_lf0=config['model']['emb_lf0'], lf0_size=config['model']['lf0_size']).to(device)
+    encoder_F2 = Encoder_f0(emb_lf0=config['model']['emb_lf0'], lf0_size=config['model']['lf0_size']).to(device)
+    encoder = Encoder(c_h2=config['model']['z_dim']).to(device)
+    decoder = DecoderMulti(emb_size=config['model']['lf0_size'], c_in=config['model']['z_dim']).to(device)
+
 
     checkpoint = torch.load(checkpoint_path)
     encoder.load_state_dict(checkpoint['encoder'])
@@ -130,11 +133,12 @@ def main():
         _, pred_ref_mel = decoder(z_ref_mel, ref_lF1_emb, ref_lF2_emb)
 
         # continuum
-        b_ints = np.linspace(0, 1, 10)
+        num = 5
+        b_ints = np.linspace(0, 1, num)
         lF1_ints = [src_lF1_emb * (1 - b) + ref_lF1_emb * b for b in b_ints ]
         lF2_ints = [src_lF2_emb * (1 - b) + ref_lF2_emb * b for b in b_ints ]
         mel_ints = [decoder(z_src_mel, lF1_int, lF2_int)[1] for lF1_int, lF2_int in zip(lF1_ints, lF2_ints)]
-        for i in range(10):
+        for i in range(num):
             feat_writer[out_filename + f"continuum_{i}"] = mel_ints[i].squeeze(0).cpu().numpy().T
 
         # Plot mel
@@ -176,4 +180,12 @@ def main():
     subprocess.call(cmd)
 
 if __name__ == "__main__":
-    main()
+    args = argparse.ArgumentParser(description='MI_Continuum')
+    args.add_argument('-c', '--config', default="config.yaml", type=str,
+                      help='config file path (default: None)')
+    
+    args = args.parse_args()
+    with open(args.config, 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    main(config)

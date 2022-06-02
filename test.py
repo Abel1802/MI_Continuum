@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import argparse
+import yaml
 import subprocess
 import soundfile as sf
 import resampy
@@ -56,24 +58,24 @@ def extract_logmel(wav_path, mean, std, sr=16000):
     return mel, lf0
 
 
-def main():
+def main(config):
     # checkpoint_path
-    resume_epoch = 500
-    exp_name = "F001_mel_F2_with_MINE_100_mi_loss_embTrue"
+    resume_epoch = 400
+    exp_name = "F002_mel_F2_with_MINE_100_mi_loss_BS256"
     checkpoint_path = f"exp/{exp_name}/checkpoints/model.ckpt-{resume_epoch}.pt"
-    mel_stats = np.load("/disk2/lz/workspace/data_new/F001/mel_stats.npy")
+    mel_stats = np.load("/disk2/lz/workspace/data_F002/F002/mel_stats.npy")
     mel_mean, mel_std = mel_stats[0], mel_stats[1]
     out_dir = f"exp/{exp_name}/converted/"
     os.makedirs(out_dir, exist_ok=True)
-    device = torch.device('cuda:1')
+    device = torch.device('cuda:0')
 
     # test_data
     feat_writer = kaldiio.WriteHelper(
             "ark,scp:{o}.ark,{o}.scp".format(o=str(out_dir) + "/feats.1")
         )
     
-    src_wav_path = "/disk2/lz/workspace/data_new/test_wavs/yi1.wav"
-    ref_wav_path = "/disk2/lz/workspace/data_new/test_wavs/wu1_fix.wav"
+    src_wav_path = "/disk2/lz/workspace/data_new/test_wavs/F002_yi1.wav"
+    ref_wav_path = "/disk2/lz/workspace/data_new/test_wavs/F002_wu1_fix.wav"
     out_filename = os.path.basename(src_wav_path).split(".")[0]
     src_mel, src_lf0 = extract_logmel(src_wav_path, mel_mean, mel_std)
     ref_mel, ref_lf0 = extract_logmel(ref_wav_path, mel_mean, mel_std)
@@ -90,9 +92,9 @@ def main():
     ref_lf0 = torch.FloatTensor(ref_lf0).unsqueeze(0).to(device)
 
     # load trained model
-    encoder_f0 = Encoder_f0(emb_lf0=True).to(device)
-    encoder = Encoder().to(device)
-    decoder = Decoder().to(device)
+    encoder_f0 = Encoder_f0(emb_lf0=config['model']['emb_lf0'], lf0_size=config['model']['lf0_size']).to(device)
+    encoder = Encoder(c_h2=config['model']['z_dim']).to(device)
+    decoder = Decoder(emb_size=config['model']['lf0_size'], c_in=config['model']['z_dim']).to(device)
 
     checkpoint = torch.load(checkpoint_path)
     encoder.load_state_dict(checkpoint['encoder'])
@@ -117,11 +119,12 @@ def main():
         _, pred_ref_mel = decoder(z_ref_mel, ref_lf0_emb)
 
         # continuum
-        b_ints = np.linspace(0, 1, 10)
-        lf0_ints = [src_lf0_emb * (1 - b) + ref_lf0_emb * b for b in b_ints ]
+        diff = (src_lf0_emb - ref_lf0_emb) / 6
+        b_ints = np.linspace(2, -8, 11)
+        lf0_ints = [src_lf0_emb + diff * b for b in b_ints ]
         mel_ints = [decoder(z_src_mel, lf0_int)[1] for lf0_int in lf0_ints]
-        for i in range(10):
-            feat_writer[out_filename + f"continuum_{i}"] = mel_ints[i].squeeze(0).cpu().numpy().T
+        for i in range(11):
+            feat_writer[out_filename + f"_continuum_{i}"] = mel_ints[i].squeeze(0).cpu().numpy().T
 
         # Plot mel
         plt.figure(figsize=(10, 8))
@@ -133,7 +136,7 @@ def main():
         plt.imshow(pred_src_mel_ref_lf0.squeeze(0).cpu().numpy(), origin='lower', aspect='auto')
         plt.subplot(144)
         plt.imshow(ref_mel.squeeze(0).cpu().numpy(), origin='lower', aspect='auto')
-        plt.savefig(f'exp/{exp_name}/resume_{resume_epoch}.png')
+        plt.savefig(f'exp/{exp_name}/{out_filename}_resume_{resume_epoch}.png')
 
         feat_writer[out_filename + "_converted"] = pred_src_mel_ref_lf0.squeeze(0).cpu().numpy().T
         feat_writer[out_filename + "_source"] = src_mel.squeeze(0).cpu().numpy().T
@@ -156,4 +159,12 @@ def main():
     subprocess.call(cmd)
 
 if __name__ == "__main__":
-    main()
+    args = argparse.ArgumentParser(description='MI_Continuum')
+    args.add_argument('-c', '--config', default="config.yaml", type=str,
+                      help='config file path (default: None)')
+    
+    args = args.parse_args()
+    with open(args.config, 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    main(config)

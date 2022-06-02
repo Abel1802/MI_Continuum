@@ -41,9 +41,9 @@ def main(config):
                                 f0_dir=f"{config['data_dir']}/F2")
     data_loader = DataLoader(data_set, config['train']['batch_size'], shuffle=True)
     # Build model architecture
-    encoder_f0 = Encoder_f0(emb_lf0=config['model']['emb_lf0'])
-    encoder = Encoder()
-    decoder = Decoder()
+    encoder_f0 = Encoder_f0(emb_lf0=config['model']['emb_lf0'], lf0_size=config['model']['lf0_size'])
+    encoder = Encoder(c_h2=config['model']['z_dim'])
+    decoder = Decoder(emb_size=config['model']['lf0_size'], c_in=config['model']['z_dim'])
     if config['MINE_net']:
         pm_mi_net = MINE(config['model']['lf0_size'], 
                         config['model']['z_dim'],

@@ -43,10 +43,10 @@ def main(config):
                                 F2_dir=f"{config['data_dir']}/F2")
     data_loader = DataLoader(data_set, config['train']['batch_size'], shuffle=True)
     # Build model architecture
-    encoder_F1 = Encoder_f0(config['model']['emb_lf0'])
-    encoder_F2 = Encoder_f0(config['model']['emb_lf0'])
-    encoder = Encoder()
-    decoder = DecoderMulti()
+    encoder_F1 = Encoder_f0(config['model']['emb_lf0'], lf0_size=config['model']['lf0_size'])
+    encoder_F2 = Encoder_f0(config['model']['emb_lf0'], lf0_size=config['model']['lf0_size'])
+    encoder = Encoder(c_h2=config['model']['z_dim'])
+    decoder = DecoderMulti(emb_size=config['model']['lf0_size'], c_in=config['model']['z_dim'])
     if config['MINE_net']:
         m1_mi_net = MINE(config['model']['lf0_size'], 
                         config['model']['z_dim'],

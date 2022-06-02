@@ -59,29 +59,53 @@ def pixel_shuffle_1d(inp, upscale_factor=2):
     return shuffle_out
 
 
+class AE_Key(nn.Module):
+    def __init__(self, emb_size=128):
+        super(AE_Key, self).__init__()
+        self.emb_size = emb_size
+        self.lays = nn.Sequential(nn.Linear(1, 512),
+                                  nn.ReLU(),
+                                  nn.Linear(512, 512),
+                                  nn.ReLU())
+        self.lays2 = nn.Sequential(nn.Linear(512, 512),
+                                  nn.ReLU(),
+                                  nn.Linear(512, 1)
+                                  )
+    def forward(self, lf0):
+        lf0 = lf0.unsqueeze(1)
+        z = self.lays(lf0)
+        lf0_pred = self.lays2(z)
+        return lf0_pred
+
+    def get_emb(self, lf0):
+        lf0 = lf0.unsqueeze(1)
+        return self.lays(lf0)
+
+
+
 class Encoder_f0(nn.Module):
     '''
         Map f0(B, T) to f0_emb(B, 64, T)
     '''
-    def __init__(self, emb_lf0=False):
+    def __init__(self, emb_lf0=False, lf0_size=1):
         super(Encoder_f0, self).__init__()
         self.emb_lf0 = emb_lf0
         self.conv_layers = nn.Sequential(nn.Conv1d(1, 256, kernel_size=5, stride=1, padding=2),
-                                        nn.BatchNorm1d(256),
+                                        nn.GroupNorm(256//16, 256),
                                         nn.ReLU(),
-                                        nn.Conv1d(256, 256, kernel_size=3, stride=1, padding=1),
-                                        nn.BatchNorm1d(256),
+                                        nn.Conv1d(256, 256, kernel_size=5, stride=1, padding=2),
+                                        nn.GroupNorm(256//16, 256),
                                         nn.ReLU(),
-                                        nn.Conv1d(256, 1, kernel_size=1, stride=1, padding=0),
-                                        nn.BatchNorm1d(1),
+                                        nn.Conv1d(256, 256, kernel_size=5, stride=1, padding=2),
+                                        nn.GroupNorm(256//16, 256),
                                         nn.ReLU())
-        self.lstm = nn.LSTM(256, 1, 1, batch_first=True, bidirectional=False)
+      #   self.lstm = nn.LSTM(256, lf0_size//2, 1, batch_first=True, bidirectional=True)
     def forward(self, lf0):
         lf0 = lf0.unsqueeze(1) # (B, 1, T)
         if self.emb_lf0:
             lf0 = self.conv_layers(lf0) # (B, 256, T)
             lf0 = lf0.permute(0, 2, 1) # (B, T, 256)
-            # lf0, _ = self.lstm(lf0) # (B, T, 64)
+        #     lf0, _ = self.lstm(lf0) # (B, T, 64)
         else:
             lf0 = lf0.permute(0, 2, 1) #(B, T, 1)
         return lf0
@@ -118,7 +142,7 @@ class Encoder_f0(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, c_in=80, c_h1=128, c_h2=64, c_h3=128, ns=0.2, dp=0.5):
+    def __init__(self, c_h2=64, c_in=80, c_h1=128, c_h3=128, ns=0.2, dp=0.5):
         super(Encoder, self).__init__()
         self.ns = ns
         self.conv1s = nn.ModuleList(
@@ -278,7 +302,7 @@ class Postnet(nn.Module):
 
 
 class DecoderMulti(nn.Module):
-    def __init__(self, c_in=64, c_out=80, dim_pre=512, emb_size=1):
+    def __init__(self, emb_size=1, c_in=64, c_out=80, dim_pre=512):
         super(DecoderMulti, self).__init__()
         convolutions = []
         for i in range(3):
@@ -328,7 +352,7 @@ if __name__ == "__main__":
     mels = torch.randn(256, 80, 128).to(device)
     lf0 = torch.randn(256, 128).to(device)
 
-    f0_net = Encoder_f0(emb_lf0=False).to(device)
+    f0_net = Encoder_f0(emb_lf0=True).to(device)
     encoder = Encoder().to(device)
     decoder = Decoder().to(device)
 

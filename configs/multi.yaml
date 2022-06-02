@@ -1,4 +1,4 @@
-exp_name: F001_mel_F1_F2_with_MINE_100_mi_loss
+exp_name: F001_mel_F1_F2_with_MINE_100_mi_loss_BS256
 MINE_net: True
 gpu_id: 0
 weight_m1_mi: 100
