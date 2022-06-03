@@ -11,9 +11,15 @@ We synthesize speech continuum using mini-MI.
   ```
   MI_Continuum/
   |
-  |--train.py - main trian to start train
+  |--train.py - main trian to start train(disentanle a single key value from mel-spectrogram)
+  |--train_multi.py - disentangle two or more key values from mel-spectrogram
   |
   |--test.py - evaluation of trained model
+  |
+  |--exp/ saved dir
+  |  |--exp1/
+  |     |--checkpoints/ - saved model
+  |     |--result.log - logging output
   |
   |--configs/ - configurations for training
   |  |--base.yaml - base configuration
